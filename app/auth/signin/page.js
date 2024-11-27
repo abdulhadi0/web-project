@@ -3,16 +3,19 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e) {
@@ -20,13 +23,12 @@ export default function SignInPage() {
     
     try {
       setError(null);
+      setIsLoading(true);
       const result = await signIn('credentials', {
         redirect: false,
         email,
         password
       });
-
-      console.log(result)
 
       if (result?.error) {
         setError('Invalid email or password');
@@ -35,14 +37,19 @@ export default function SignInPage() {
       }
     } catch (err) {
       setError('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign In to RateMyInstructor</CardTitle>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+          <CardDescription className="text-center">
+            Enter your email and password to access RateMyInstructor
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -51,8 +58,8 @@ export default function SignInPage() {
             </Alert>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block mb-2">Email</label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input 
                 id="email"
                 type="email" 
@@ -62,8 +69,8 @@ export default function SignInPage() {
                 required 
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block mb-2">Password</label>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input 
                 id="password"
                 type="password" 
@@ -73,18 +80,30 @@ export default function SignInPage() {
                 required 
               />
             </div>
-            <Button type="submit" className="w-full">Sign In</Button>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </Button>
           </form>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center text-sm">
             <p>
-              Don't have an account? {' '}
-              <a href="/auth/signup" className="text-blue-600 hover:underline">
+              Don't have an account?{' '}
+              <Link href="/auth/signup" className="text-primary hover:underline font-medium">
                 Sign Up
-              </a>
+              </Link>
             </p>
+          </div>
+          <div className="mt-4 text-center text-sm">
+            <Link href="/auth/forgot-password" className="text-gray-600 hover:underline">
+              Forgot your password?
+            </Link>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+

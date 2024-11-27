@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 
 export default function SignUpPage() {
   const [username, setUsername] = useState('');
@@ -14,6 +16,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e) {
@@ -27,6 +30,7 @@ export default function SignUpPage() {
 
     try {
       setError(null);
+      setIsLoading(true);
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -50,14 +54,19 @@ export default function SignUpPage() {
       router.push('/auth/signin');
     } catch (err) {
       setError('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign Up for RateMyInstructor</CardTitle>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Create an Account</CardTitle>
+          <CardDescription className="text-center">
+            Sign up for RateMyInstructor to start rating and reviewing
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -66,8 +75,8 @@ export default function SignUpPage() {
             </Alert>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="username" className="block mb-2">Username</label>
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
               <Input 
                 id="username"
                 type="text" 
@@ -78,8 +87,8 @@ export default function SignUpPage() {
                 minLength={3}
               />
             </div>
-            <div>
-              <label htmlFor="email" className="block mb-2">Email</label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input 
                 id="email"
                 type="email" 
@@ -89,8 +98,8 @@ export default function SignUpPage() {
                 required 
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block mb-2">Password</label>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input 
                 id="password"
                 type="password" 
@@ -101,8 +110,8 @@ export default function SignUpPage() {
                 minLength={8}
               />
             </div>
-            <div>
-              <label htmlFor="confirm-password" className="block mb-2">Confirm Password</label>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
               <Input 
                 id="confirm-password"
                 type="password" 
@@ -113,18 +122,25 @@ export default function SignUpPage() {
                 minLength={8}
               />
             </div>
-            <Button type="submit" className="w-full">Sign Up</Button>
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing Up...' : 'Sign Up'}
+            </Button>
           </form>
-          <div className="mt-4 text-center">
-            <p>
-              Already have an account? {' '}
-              <a href="/auth/signin" className="text-blue-600 hover:underline">
-                Sign In
-              </a>
-            </p>
-          </div>
         </CardContent>
+        <CardFooter>
+          <p className="text-sm text-center w-full">
+            Already have an account?{' '}
+            <Link href="/auth/signin" className="text-primary hover:underline font-medium">
+              Sign In
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );
 }
+

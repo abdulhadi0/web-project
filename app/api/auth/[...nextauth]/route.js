@@ -44,7 +44,6 @@ const authOptions = {
             throw new Error('Invalid password');
           }
 
-          // Return user object for session
           return {
             id: user._id.toString(),
             email: user.email,
@@ -79,6 +78,7 @@ const authOptions = {
         session.user.role = token.role;
         session.user.email = token.email;
       }
+      console.log(session); 
       return session;
     }
   },
