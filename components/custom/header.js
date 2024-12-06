@@ -10,7 +10,7 @@ export default function Header() {
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2">
-          <Image src="/RateMyProfessor.webp" alt="RateMyProfessor Logo" width={40} height={40} />
+          <Image src="/logo.svg" alt="RateMyProfessor Logo" width={40} height={40} />
           <span className="text-xl font-bold text-gray-800">RateMyProfessor</span>
         </Link>
         <nav>
