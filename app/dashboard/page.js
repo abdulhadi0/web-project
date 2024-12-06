@@ -16,19 +16,33 @@ export default function DashboardPage() {
 
   if (status === "authenticated") {
     return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold">Welcome, {session.user.username}!</h1>
-        <p>Role: {session.user.role}</p>
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        
 
-        <button
-          onClick={handleSignOut}
-          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-        >
-          Sign Out
-        </button>
+        <main className="container mx-auto p-6 flex-grow">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Welcome, {session.user.username}!</h2>
+            <p className="text-gray-700 mb-4">Role: {session.user.role}</p>
+
+            <button
+              onClick={handleSignOut}
+              className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </main>
+
+        <footer className="bg-gray-800 text-white text-center p-4">
+          <p>&copy; {new Date().getFullYear()} Rate My Instructor. All rights reserved.</p>
+        </footer>
       </div>
     );
   } else {
-    return <a href="/auth/signin">Sign in</a>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <a href="/auth/signin" className="text-blue-600 text-lg font-semibold">Sign in</a>
+      </div>
+    );
   }
 }

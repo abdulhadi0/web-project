@@ -2,123 +2,309 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Star, X } from 'lucide-react';
+import { toast } from "@/lib/hooks/use-toast";
 
-export default function RatingPopup({ userId, closePopup, refreshRatings }) {
-  const [instructors, setInstructors] = useState([]);
-  const [selectedInstructor, setSelectedInstructor] = useState('');
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [loading, setLoading] = useState(false);
+export default function RatingPopup({ 
+  userId, 
+  closePopup, 
+  refreshRatings, 
+  selectedRating = null 
+}) {
+  const [formData, setFormData] = useState({
+    campus: '',
+    school: '',
+    department: '',
+    instructor: '',
+    rating: 0,
+    comment: ''
+  });
 
+  const [dropdownData, setDropdownData] = useState({
+    campuses: [],
+    schools: [],
+    departments: [],
+    instructors: []
+  });
+
+  const [loading, setLoading] = useState({
+    campuses: false,
+    schools: false,
+    departments: false,
+    instructors: false,
+    submit: false
+  });
+
+  // Fetch and populate initial data
   useEffect(() => {
-    const fetchInstructors = async () => {
+    const fetchInitialData = async () => {
+      setLoading(prev => ({ ...prev, campuses: true }));
       try {
-        const res = await fetch(`/api/instructors?action=list&userId=${userId}`);
-        if (!res.ok) throw new Error('Failed to fetch instructors.');
+        const res = await fetch('/api/instructors?action=campuses');
+        if (!res.ok) throw new Error('Failed to fetch campuses');
         const data = await res.json();
-        const sortedData = data.sort((a, b) => a.Name.localeCompare(b.Name));
-        setInstructors(sortedData);
+        setDropdownData(prev => ({ ...prev, campuses: data }));
 
+        if (selectedRating) {
+          const { instructorId, rating: existingRating, comment: existingComment } = selectedRating;
+
+          // Populate form with `selectedRating` details
+          const { Campus, School, Department, _id } = instructorId;
+          setFormData({
+            campus: Campus,
+            school: School,
+            department: Department,
+            instructor: _id,
+            rating: existingRating,
+            comment: existingComment || ''
+          });
+
+          // Fetch dropdowns sequentially for pre-filled data
+          await fetchDropdownData('schools', { campus: Campus });
+          await fetchDropdownData('departments', { campus: Campus, school: School });
+          await fetchDropdownData('instructors', { campus: Campus, school: School, department: Department });
+        }
       } catch (error) {
-        alert(error.message);
+        toast({
+          title: "Error",
+          description: "Failed to fetch campuses",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(prev => ({ ...prev, campuses: false }));
       }
     };
 
-    fetchInstructors();
-  }, [userId]);
+    fetchInitialData();
+  }, [selectedRating]);
 
+  // Fetch dependent dropdown data
+  const fetchDropdownData = async (type, params) => {
+    setLoading(prev => ({ ...prev, [type]: true }));
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const res = await fetch(`/api/instructors?action=${type}&${queryParams}`);
+      
+      if (!res.ok) throw new Error(`Failed to fetch ${type}`);
+      
+      const data = await res.json();
+      setDropdownData(prev => ({ ...prev, [type]: data }));
+      
+      // Reset subsequent dropdowns
+      if (type === 'campuses') {
+        setFormData(prev => ({ ...prev, school: '', department: '', instructor: '' }));
+        setDropdownData(prev => ({ ...prev, schools: [], departments: [], instructors: [] }));
+      } else if (type === 'schools') {
+        setFormData(prev => ({ ...prev, department: '', instructor: '' }));
+        setDropdownData(prev => ({ ...prev, departments: [], instructors: [] }));
+      } else if (type === 'departments') {
+        setFormData(prev => ({ ...prev, instructor: '' }));
+        setDropdownData(prev => ({ ...prev, instructors: [] }));
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to fetch ${type}`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  // Dropdown change handlers
+  const handleDropdownChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    switch (field) {
+      case 'campus':
+        fetchDropdownData('schools', { campus: value });
+        break;
+      case 'school':
+        fetchDropdownData('departments', { 
+          campus: formData.campus, 
+          school: value 
+        });
+        break;
+      case 'department':
+        fetchDropdownData('instructors', { 
+          campus: formData.campus, 
+          school: formData.school, 
+          department: value,
+          userId 
+        });
+        break;
+    }
+  };
+
+  // Submit handler
   const handleSubmit = async () => {
-    if (!selectedInstructor || rating === 0) {
-      alert('Please select an instructor and provide a rating.');
+    const { instructor, rating } = formData;
+
+    if (!instructor || rating === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select an instructor and provide a rating.",
+        variant: "destructive"
+      });
       return;
     }
 
-    setLoading(true);
+    setLoading(prev => ({ ...prev, submit: true }));
+
     try {
-      const response = await fetch('/api/instructors', {
-        method: 'POST',
+      const endpoint = selectedRating 
+        ? `/api/instructors/${selectedRating._id}` 
+        : '/api/instructors/';
+      const method = selectedRating ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          instructorId: selectedInstructor,
-          rating,
-          comment,
+          instructorId: instructor,
+          rating: formData.rating,
+          comment: formData.comment,
         }),
       });
 
       if (!response.ok) throw new Error('Failed to submit rating.');
 
-      
-      setRating(0);
-      setComment('');
-      setSelectedInstructor('');
+      toast({
+        title: "Success",
+        description: selectedRating 
+          ? "Rating updated successfully" 
+          : "Rating added successfully",
+      });
+
+      // Reset and close
       refreshRatings();
       closePopup();
     } catch (error) {
-      alert(error.message);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, submit: false }));
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md">
-        <h2 className="text-lg font-semibold">Rate an Instructor</h2>
-        <Select onValueChange={(value) => setSelectedInstructor(value)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select an Instructor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Instructors</SelectLabel>
-              {instructors.map((instructor) => (
-                <SelectItem key={instructor._id} value={instructor._id}>
-                  {instructor.Name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <div className="flex gap-1 my-4">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span
-              key={star}
-              className={`cursor-pointer text-2xl ${
-                star <= rating ? 'text-yellow-500' : 'text-gray-400'
-              }`}
-              onClick={() => setRating(star)}
-              role="button"
-              aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-md relative">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute top-2 right-2"
+          onClick={closePopup}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+        <CardHeader>
+          <CardTitle>
+            {selectedRating ? 'Edit Rating' : 'Add New Rating'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* Dropdown fields */}
+            {[
+              { 
+                label: 'Campus', 
+                field: 'campus', 
+                options: dropdownData.campuses 
+              },
+              { 
+                label: 'School', 
+                field: 'school', 
+                options: dropdownData.schools 
+              },
+              { 
+                label: 'Department', 
+                field: 'department', 
+                options: dropdownData.departments 
+              },
+              { 
+                label: 'Instructor', 
+                field: 'instructor', 
+                options: dropdownData.instructors.map(i => ({
+                  value: i._id,
+                  label: i.Name
+                }))
+              }
+            ].map(({ label, field, options }) => (
+              <div key={field}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {label}
+                </label>
+                <Select
+                  value={formData[field] || ''} 
+                  onValueChange={(value) => handleDropdownChange(field, value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${label}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {options.map(option => (
+                      <SelectItem 
+                        key={typeof option === 'string' ? option : option.value} 
+                        value={typeof option === 'string' ? option : option.value}
+                      >
+                        {typeof option === 'string' ? option : option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+
+            {/* Rating Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+              <div className="flex space-x-1">
+                {[1, 2, 3, 4, 5].map(value => (
+                  <Star 
+                    key={value} 
+                    className={`h-6 w-6 cursor-pointer ${value <= formData.rating ? 'text-yellow-500' : 'text-gray-300'}`} 
+                    onClick={() => setFormData(prev => ({ ...prev, rating: value }))} 
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Comment Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+              <Textarea 
+                placeholder="Enter comment (optional)" 
+                value={formData.comment} 
+                onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+              />
+            </div>
+
+            {/* Submit Button */}
+            <Button 
+              disabled={loading.submit} 
+              className="w-full" 
+              onClick={handleSubmit}
             >
-              ★
-            </span>
-          ))}
-        </div>
-        <Textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Add a comment (optional)"
-        />
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={closePopup} disabled={loading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit'}
-          </Button>
-        </div>
-      </div>
+              {loading.submit ? 'Submitting...' : 'Submit'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
