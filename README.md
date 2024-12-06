@@ -1,6 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Web Programming - Fall 2024
+
+### Rate My Instructor
+
+Project by:
+
+- Zaid Abdur Rahman 21L-7355
+- Rafay Junaid 21L-7607
+- Hassan Zubair Khan 21L-7718
+- Abdul Hadi 21L-7747
 
 ## Getting Started
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 First, run the development server:
 
